@@ -4,7 +4,7 @@ Pipeline de ingestão, validação e análise de documentos fiscais eletrônicos
 XML de NF-e → data lake → motor de regras configurável → achados priorizados
 por impacto financeiro.
 
-![CI](https://github.com/USUARIO/fiscal-pipeline/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/maraysamacedo/fiscal-pipeline/actions/workflows/ci.yml/badge.svg)
 
 ## O problema
 
