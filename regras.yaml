@@ -1,0 +1,130 @@
+# Catalogo de regras fiscais.
+# Adicionar regra = adicionar bloco aqui. Nenhuma linha de Python.
+# Toda alteracao passa por code review e pelo validador do CI.
+
+regras:
+  - id: R001
+    nome: Simples Nacional com CST de ICMS
+    descricao: >
+      Empresa optante do Simples deve usar CSOSN. Presenca de CST de ICMS
+      indica configuracao errada no emissor e pode gerar cobranca indevida.
+    categoria: CLASSIFICACAO
+    severidade: ALTA
+    tipo: sql
+    condicao: "is_simples AND cst_icms IS NOT NULL"
+    campo_valor: vl_produto
+    aliquota_risco: 0.20
+    vigencia_inicio: 2007-07-01
+
+  - id: R002
+    nome: NCM fora do padrao de 8 digitos
+    descricao: >
+      NCM invalido ou generico. Com a reforma tributaria, sistemas passam a
+      consultar regras em tempo real e a nota pode ser rejeitada.
+    categoria: CLASSIFICACAO
+    severidade: ALTA
+    tipo: sql
+    condicao: "ncm IS NULL OR NOT regexp_matches(ncm, '^[0-9]{8}$') OR ncm IN ('00000000','99999999')"
+    campo_valor: vl_produto
+    aliquota_risco: 0.12
+
+  - id: R003
+    nome: CFOP interestadual com mesma UF
+    descricao: CFOP do grupo 6 exige UF de destino diferente da de origem.
+    categoria: CLASSIFICACAO
+    severidade: ALTA
+    tipo: sql
+    condicao: "LEFT(cfop, 1) = '6' AND uf_emit = uf_dest"
+    campo_valor: vl_produto
+    aliquota_risco: 0.20
+
+  - id: R004
+    nome: Chave de acesso duplicada
+    descricao: Mesmo documento ingerido mais de uma vez.
+    categoria: DUPLICIDADE
+    severidade: CRITICA
+    tipo: python
+    condicao: duplicidade_chave
+    aliquota_risco: 0.0
+
+  - id: R005
+    nome: CFOP de saida em nota de entrada
+    descricao: tpNF=0 (entrada) com CFOP dos grupos 5, 6 ou 7.
+    categoria: CLASSIFICACAO
+    severidade: ALTA
+    tipo: sql
+    condicao: "tipo_nf = '0' AND LEFT(cfop, 1) IN ('5','6','7')"
+    campo_valor: vl_produto
+    aliquota_risco: 0.20
+
+  - id: R006
+    nome: CSOSN 102 com ICMS destacado
+    descricao: >
+      CSOSN 102 indica ausencia de permissao de credito. ICMS destacado
+      nesse cenario e bitributacao.
+    categoria: CALCULO
+    severidade: ALTA
+    tipo: sql
+    condicao: "csosn = '102' AND vl_icms > 0"
+    campo_valor: vl_icms
+    aliquota_risco: 1.0
+
+  - id: R007
+    nome: Nota cancelada incluida na apuracao
+    descricao: Documento com status CANCELADA nao pode compor a base.
+    categoria: CALCULO
+    severidade: CRITICA
+    tipo: sql
+    condicao: "status = 'CANCELADA'"
+    campo_valor: vl_produto
+    aliquota_risco: 0.20
+
+  - id: R008
+    nome: Gap de numeracao
+    descricao: Salto na sequencia por emitente e serie. Possivel falha de captura.
+    categoria: CAPTURA
+    severidade: MEDIA
+    tipo: python
+    condicao: gap_numeracao
+    aliquota_risco: 0.0
+
+  - id: R009
+    nome: Emitente sem emissao ha mais de 45 dias
+    descricao: Possivel certificado vencido ou perda de procuracao.
+    categoria: CAPTURA
+    severidade: MEDIA
+    tipo: python
+    condicao: sem_emissao
+    aliquota_risco: 0.0
+
+  - id: R010
+    nome: Preco unitario outlier dentro do NCM
+    descricao: Valor unitario nos extremos da distribuicao do mesmo NCM.
+    categoria: CALCULO
+    severidade: BAIXA
+    tipo: python
+    condicao: preco_outlier
+    campo_valor: vl_produto
+    aliquota_risco: 0.05
+
+  - id: R011
+    nome: Regime regular usando CSOSN
+    descricao: CSOSN e exclusivo do Simples Nacional.
+    categoria: CLASSIFICACAO
+    severidade: ALTA
+    tipo: sql
+    condicao: "NOT is_simples AND csosn IS NOT NULL"
+    campo_valor: vl_produto
+    aliquota_risco: 0.20
+
+  - id: R012
+    nome: Valor total divergente da soma dos itens
+    descricao: >
+      O campo vNF do cabecalho deve corresponder a soma dos vProd dos itens.
+      Divergencia indica erro de emissao ou perda de item na captura.
+    categoria: CALCULO
+    severidade: ALTA
+    tipo: python
+    condicao: total_divergente
+    campo_valor: vl_produto
+    aliquota_risco: 0.20

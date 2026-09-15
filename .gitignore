@@ -1,0 +1,15 @@
+data/
+*.duckdb
+*.parquet
+*.xml
+!tests/fixtures/*.xml
+.env
+*.pem
+*.pfx
+credentials*.json
+__pycache__/
+.venv/
+.pytest_cache/
+.coverage
+target/
+dbt_packages/
