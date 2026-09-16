@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  qualidade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Validar regras.yaml
+        run: python -m src.regras.validar regras.yaml
+
+      - name: Testes
+        run: python -m pytest tests/ -v
+
+      - name: Pipeline end-to-end
+        run: |
+          python -m src.gerar_massa --qtd 500
+          python -m src.ingest
+          python -m src.cli processar data/raw/nfe
+          python -c "import duckdb;duckdb.connect('fiscal.duckdb').execute(open('sql/auditoria.sql', encoding='utf-8').read())"
+          python -m src.cli auditar --top 10
