@@ -33,6 +33,9 @@ def existe(tabela: str) -> bool:
 
 st.title("Painel de Saude Fiscal")
 
+st.caption("Inconsistencias em documentos fiscais eletronicos, "
+           "priorizadas por impacto financeiro estimado")
+
 if not existe("achados"):
     st.error("Tabela `achados` nao encontrada. Rode: `make auditar`")
     st.stop()
@@ -59,7 +62,9 @@ kpi = consultar(f"""
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Achados", f"{kpi['achados']:,}".replace(",", "."))
 c2.metric("Clientes afetados", kpi["clientes"])
-c3.metric("Risco estimado", f"R$ {kpi['risco']:,.2f}")
+c3.metric("Risco estimado", f"R$ {kpi['risco']:,.2f}",
+          help="Estimativa para priorizacao: valor x aliquota de risco "
+               "da regra. Nao e apuracao fiscal.")
 c4.metric("Regras disparadas", kpi["regras"])
 
 st.divider()
@@ -76,13 +81,16 @@ with col_a:
         GROUP BY 1, 2 ORDER BY impacto DESC LIMIT 10
     """)
     if df.height:
+        df = df.with_columns(
+            pl.col("nome_regra").str.slice(0, 34).alias("regra_curta"))
         st.altair_chart(
             alt.Chart(df.to_pandas()).mark_bar().encode(
-                x=alt.X("impacto:Q", title="Impacto (R$)"),
-                y=alt.Y("nome_regra:N", sort="-x", title=None),
+                x=alt.X("impacto:Q", title="Impacto estimado (R$)",
+                        axis=alt.Axis(format=",.0f")),
+                y=alt.Y("regra_curta:N", sort="-x", title=None),
                 color=alt.Color("severidade:N", legend=None),
                 tooltip=["nome_regra", "qtd", "impacto"],
-            ).properties(height=320),
+            ).properties(height=260),
             use_container_width=True)
 
 with col_b:
@@ -93,7 +101,14 @@ with col_b:
         FROM achados WHERE severidade IN ('{filtro}')
         GROUP BY 1 ORDER BY risco DESC LIMIT 10
     """)
-    st.dataframe(df_cli, use_container_width=True, hide_index=True)
+    st.dataframe(
+        df_cli, use_container_width=True, hide_index=True,
+        column_config={
+            "cnpj_emit": st.column_config.TextColumn("CNPJ", width="medium"),
+            "achados": st.column_config.NumberColumn("Achados", width="small"),
+            "risco": st.column_config.NumberColumn(
+                "Risco (R$)", format="R$ %.2f", width="medium"),
+        })
 
 st.divider()
 
